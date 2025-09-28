@@ -13,10 +13,10 @@ This project uses Docker for both development and production environments.
 
 ```bash
 # Start development environment with hot reload
-docker compose -f compose.override.yaml up
+docker compose up
 
 # Or run in detached mode
-docker compose -f compose.override.yaml up -d
+docker compose up -d
 ```
 
 The development server will be available at:
@@ -43,7 +43,7 @@ The production server will be available at:
 
 ```bash
 # Enter development container shell
-docker compose -f compose.override.yaml run --rm app
+docker compose run --rm app
 
 # Inside container, you can run:
 npm ci                    # Install dependencies
