@@ -1,0 +1,156 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      image-tag: ${{ steps.meta.outputs.tags }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            NODE_ENV=production
+            VITE_ALLOWED_HOSTS=${{ vars.VITE_ALLOWED_HOSTS }}
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: staging
+      url: https://rcmd-staging.example.com
+
+    steps:
+      - name: Deploy to staging server
+        env:
+          POSTGRES_URL: ${{ secrets.POSTGRES_URL_STAGING }}
+          VITE_ALLOWED_HOSTS: ${{ vars.VITE_ALLOWED_HOSTS_STAGING }}
+        run: |
+          echo "🚀 Deploying to staging environment"
+          echo "Image: ${{ needs.build-and-push.outputs.image-tag }}"
+          echo "Digest: ${{ needs.build-and-push.outputs.image-digest }}"
+
+          # Example deployment with environment variables
+          # docker run -d \
+          #   --name rcmd-staging \
+          #   --restart unless-stopped \
+          #   -p 3000:3000 \
+          #   -e POSTGRES_URL="${POSTGRES_URL}" \
+          #   -e VITE_ALLOWED_HOSTS="${VITE_ALLOWED_HOSTS}" \
+          #   -e NODE_ENV=staging \
+          #   ${{ needs.build-and-push.outputs.image-tag }}
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    environment:
+      name: production
+      url: https://rcmd.example.com
+
+    steps:
+      - name: Deploy to production server
+        env:
+          POSTGRES_URL: ${{ secrets.POSTGRES_URL_PRODUCTION }}
+          VITE_ALLOWED_HOSTS: ${{ vars.VITE_ALLOWED_HOSTS_PRODUCTION }}
+        run: |
+          echo "🎉 Deploying to production environment"
+          echo "Image: ${{ needs.build-and-push.outputs.image-tag }}"
+          echo "Digest: ${{ needs.build-and-push.outputs.image-digest }}"
+
+          # Example production deployment
+          # docker run -d \
+          #   --name rcmd-production \
+          #   --restart unless-stopped \
+          #   -p 3000:3000 \
+          #   -e POSTGRES_URL="${POSTGRES_URL}" \
+          #   -e VITE_ALLOWED_HOSTS="${VITE_ALLOWED_HOSTS}" \
+          #   -e NODE_ENV=production \
+          #   -v rcmd-data:/app/data \
+          #   ${{ needs.build-and-push.outputs.image-tag }}
+
+  notify:
+    name: Notify Deployment
+    runs-on: ubuntu-latest
+    needs: [build-and-push, deploy-staging, deploy-production]
+    if: always()
+
+    steps:
+      - name: Deployment notification
+        run: |
+          if [[ "${{ needs.deploy-staging.result }}" == "success" ]]; then
+            echo "✅ Staging deployment successful"
+          fi
+
+          if [[ "${{ needs.deploy-production.result }}" == "success" ]]; then
+            echo "✅ Production deployment successful"
+          fi
+
+          echo "📊 Deployment Summary:"
+          echo "- Image: ${{ needs.build-and-push.outputs.image-tag }}"
+          echo "- Commit: ${{ github.sha }}"
+          echo "- Actor: ${{ github.actor }}"
