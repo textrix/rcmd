@@ -74,11 +74,20 @@ docker compose run --rm app npx -y sv create .
 
 ## 환경 변수 설정
 
+예제 환경 파일을 복사하고 설정하세요:
+
+```bash
+cp .env.example .env
+```
+
 `.env` 파일을 편집하여 환경을 구성하세요:
 
 ```env
 PUID=1000    # 파일 권한용 사용자 ID
 PGID=1000    # 파일 권한용 그룹 ID
+
+# 리버스 프록시 또는 외부 접속용
+VITE_ALLOWED_HOSTS=rcmd.example.com,.example.com,.local
 ```
 
 ### 사용자 ID 확인

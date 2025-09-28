@@ -61,11 +61,20 @@ docker compose run --rm app npx -y sv create .
 
 ## Environment Variables
 
-Configure your environment by editing `.env`:
+Configure your environment by copying the example file:
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` with your settings:
 
 ```env
 PUID=1000    # User ID for file permissions
 PGID=1000    # Group ID for file permissions
+
+# For reverse proxy access
+VITE_ALLOWED_HOSTS=rcmd.example.com,.example.com
 ```
 
 ## Docker Architecture

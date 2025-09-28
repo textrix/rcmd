@@ -101,6 +101,7 @@ rcmd/
 ├── compose.override.yaml         # Docker development
 ├── Dockerfile                    # Multi-stage build
 ├── entrypoint.sh                 # Container entrypoint
+├── .env.example                  # Environment template
 └── package.json                  # Project configuration
 ```
 
@@ -108,11 +109,21 @@ rcmd/
 
 ### Environment Configuration
 
-Create `.env` file for Docker permissions:
+Copy the example environment file and configure your settings:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` with your specific configuration:
 
 ```env
+# Docker permissions
 PUID=1000    # Your user ID (run: id -u)
 PGID=1000    # Your group ID (run: id -g)
+
+# Allow external domains for reverse proxy
+VITE_ALLOWED_HOSTS=rcmd.example.com,.example.com,.local
 ```
 
 ### Useful Commands
