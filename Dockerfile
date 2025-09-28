@@ -1,5 +1,5 @@
 # ===== BASE =====
-FROM node:22-alpine AS base
+FROM node:24-alpine AS base
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
 RUN echo "Building for ${TARGETPLATFORM} on ${BUILDPLATFORM}"
@@ -30,7 +30,7 @@ RUN npm prune --omit=dev
 RUN npm audit --audit-level=high
 
 # ===== PROD (런타임) =====
-FROM node:22-alpine AS prod
+FROM node:24-alpine AS prod
 WORKDIR /app
 ENV NODE_ENV=production
 RUN apk add --no-cache curl
