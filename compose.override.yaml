@@ -1,0 +1,22 @@
+services:
+  app:
+    build:
+      target: dev
+    container_name: rcmd-dev
+    working_dir: /work
+    tty: true
+    stdin_open: true
+    env_file:
+      - .env
+    environment:
+      PUID: ${PUID}
+      PGID: ${PGID}
+    volumes:
+      - .:/work
+      - .home:/home/node
+    ports:
+      - "5173:5173"
+    # 바로 개발 서버 띄우고 싶으면 command 지정(프로젝트에 맞게 수정)
+    # 예) SvelteKit:
+    # command: sh -lc "npm ci && npm run dev -- --host"
+    # 또는 셸로만 들어가고 싶으면 주석 유지
